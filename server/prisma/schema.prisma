@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  VOICE
+  VIDEO_NOTE
+  FILE
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+model User {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  displayName String
+  isOnline    Boolean  @default(false)
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  chatsAsUserA Chat[]    @relation("ChatUserA")
+  chatsAsUserB Chat[]    @relation("ChatUserB")
+  messagesSent Message[] @relation("MessageSender")
+}
+
+model Chat {
+  id        String    @id @default(uuid())
+  userAId   String
+  userBId   String
+  userA     User      @relation("ChatUserA", fields: [userAId], references: [id])
+  userB     User      @relation("ChatUserB", fields: [userBId], references: [id])
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userAId, userBId])
+}
+
+model Message {
+  id            String        @id @default(uuid())
+  chatId        String
+  chat          Chat          @relation(fields: [chatId], references: [id])
+  senderId      String
+  sender        User          @relation("MessageSender", fields: [senderId], references: [id])
+  type          MessageType   @default(TEXT)
+  content       String?
+  mediaUrl      String?
+  mediaDuration Int?
+  status        MessageStatus @default(SENT)
+  createdAt     DateTime      @default(now())
+
+  @@index([chatId, createdAt])
+}
