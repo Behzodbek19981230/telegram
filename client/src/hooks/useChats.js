@@ -1,0 +1,54 @@
+import { useCallback, useEffect, useState } from 'react';
+import { fetchChats } from '../api/chats.api.js';
+import { useSocket } from './useSocket.js';
+import { useAuth } from './useAuth.js';
+
+export function useChats() {
+  const socket = useSocket();
+  const { user } = useAuth();
+  const [chats, setChats] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const reload = useCallback(() => {
+    return fetchChats()
+      .then(setChats)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    function handleNewMessage({ message }) {
+      setChats((prev) => {
+        const idx = prev.findIndex((c) => c.id === message.chatId);
+        if (idx === -1) {
+          reload();
+          return prev;
+        }
+        const updated = [...prev];
+        const [chat] = updated.splice(idx, 1);
+        const next = {
+          ...chat,
+          lastMessage: message,
+          updatedAt: message.createdAt,
+          unreadCount: message.senderId !== user.id ? (chat.unreadCount || 0) + 1 : chat.unreadCount,
+        };
+        updated.unshift(next);
+        return updated;
+      });
+    }
+
+    socket.on('message:new', handleNewMessage);
+    return () => socket.off('message:new', handleNewMessage);
+  }, [socket, user, reload]);
+
+  const clearUnread = useCallback((chatId) => {
+    setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, unreadCount: 0 } : c)));
+  }, []);
+
+  return { chats, isLoading, reload, clearUnread };
+}

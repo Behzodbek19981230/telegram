@@ -1,0 +1,9 @@
+export const MESSAGE_TYPES = {
+  TEXT: 'TEXT',
+  IMAGE: 'IMAGE',
+  VIDEO: 'VIDEO',
+  AUDIO: 'AUDIO',
+  VOICE: 'VOICE',
+  VIDEO_NOTE: 'VIDEO_NOTE',
+  FILE: 'FILE',
+};
