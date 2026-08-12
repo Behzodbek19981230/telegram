@@ -1,22 +1,26 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!username.trim()) return;
+    setError('');
+
+    if (!username.trim()) return setError('Username shart');
+    if (!password) return setError('Password shart');
 
     setIsSubmitting(true);
-    setError('');
     try {
-      await login(username);
+      await login({ username: username.trim(), password });
       navigate('/chats', { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || 'Kirishda xatolik yuz berdi');
@@ -33,22 +37,37 @@ export function LoginPage() {
         </svg>
       </div>
       <h1>Telegram Clone</h1>
-      <p className="login-subtitle">Ismingizni kiriting va suhbatlashishni boshlang</p>
+      <p className="login-subtitle">Hisobingizga kiring</p>
 
       <form className="login-form" onSubmit={handleSubmit}>
         <input
           type="text"
-          placeholder="Ismingiz"
+          placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           maxLength={40}
           autoFocus
+          autoComplete="username"
         />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+
         {error && <p className="login-error">{error}</p>}
-        <button type="submit" disabled={isSubmitting || !username.trim()}>
-          {isSubmitting ? 'Kirilmoqda...' : 'Davom etish'}
+
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Jarayon...' : 'Kirish'}
         </button>
       </form>
+
+      <p className="login-footer">
+        Hisobingiz yo&apos;qmi?{' '}
+        <Link to="/register" className="login-footer__link">Ro&apos;yxatdan o&apos;tish</Link>
+      </p>
     </div>
   );
 }

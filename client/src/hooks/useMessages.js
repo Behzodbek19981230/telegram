@@ -57,11 +57,25 @@ export function useMessages(chatId) {
       setMessages((prev) => prev.map((m) => (messageIds.includes(m.id) ? { ...m, status } : m)));
     }
 
+    function handleDeleted({ chatId: cId, messageIds }) {
+      if (cId !== chatId) return;
+      setMessages((prev) => prev.filter((m) => !messageIds.includes(m.id)));
+    }
+
+    function handleCleared({ chatId: cId }) {
+      if (cId !== chatId) return;
+      setMessages([]);
+    }
+
     socket.on('message:new', handleNewMessage);
     socket.on('message:status', handleStatus);
+    socket.on('message:deleted', handleDeleted);
+    socket.on('chat:cleared', handleCleared);
     return () => {
       socket.off('message:new', handleNewMessage);
       socket.off('message:status', handleStatus);
+      socket.off('message:deleted', handleDeleted);
+      socket.off('chat:cleared', handleCleared);
     };
   }, [socket, chatId]);
 
@@ -79,6 +93,7 @@ export function useMessages(chatId) {
         mediaDuration: payload.mediaDuration ?? null,
         status: 'SENT',
         createdAt: new Date().toISOString(),
+        replyTo: payload.replyTo ?? null,
         pending: true,
       };
       setMessages((prev) => [...prev, optimistic]);
@@ -97,13 +112,19 @@ export function useMessages(chatId) {
     [socket, chatId, user]
   );
 
-  const markRead = useCallback(
+  const deleteMessages = useCallback(
     (messageIds) => {
-      if (!socket || !messageIds || messageIds.length === 0) return;
-      socket.emit('message:read', { chatId, messageIds });
+      if (!socket || messageIds.length === 0) return;
+      setMessages((prev) => prev.filter((m) => !messageIds.includes(m.id)));
+      socket.emit('message:delete', { chatId, messageIds });
     },
     [socket, chatId]
   );
 
-  return { messages, isLoading, hasMore, loadMore, sendMessage, markRead };
+  const markRead = useCallback(() => {
+    if (!socket || !chatId) return;
+    socket.emit('chat:read', { chatId });
+  }, [socket, chatId]);
+
+  return { messages, isLoading, hasMore, loadMore, sendMessage, deleteMessages, markRead };
 }

@@ -5,16 +5,19 @@ const IDLE_MS = 2500;
 
 export function useTyping(chatId) {
   const socket = useSocket();
-  const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const [typingUserIds, setTypingUserIds] = useState([]);
   const timerRef = useRef(null);
   const isTypingRef = useRef(false);
 
   useEffect(() => {
     if (!socket) return;
 
-    function handleUpdate(payload) {
-      if (payload.chatId !== chatId) return;
-      setIsOtherTyping(payload.isTyping);
+    function handleUpdate({ chatId: eventChatId, userId, isTyping }) {
+      if (eventChatId !== chatId) return;
+      setTypingUserIds((prev) => {
+        if (isTyping) return prev.includes(userId) ? prev : [...prev, userId];
+        return prev.filter((id) => id !== userId);
+      });
     }
 
     socket.on('typing:update', handleUpdate);
@@ -22,7 +25,7 @@ export function useTyping(chatId) {
   }, [socket, chatId]);
 
   useEffect(() => {
-    setIsOtherTyping(false);
+    setTypingUserIds([]);
     isTypingRef.current = false;
     clearTimeout(timerRef.current);
   }, [chatId]);
@@ -49,5 +52,5 @@ export function useTyping(chatId) {
     }
   }, [socket, chatId]);
 
-  return { isOtherTyping, notifyTyping, stopTyping };
+  return { typingUserIds, notifyTyping, stopTyping };
 }

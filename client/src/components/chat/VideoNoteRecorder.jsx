@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { X, Send } from 'lucide-react';
 import { useMediaRecorder } from '../../hooks/useMediaRecorder.js';
 import { formatDuration } from '../../utils/formatTime.js';
 
@@ -62,13 +63,11 @@ export function VideoNoteRecorder({ onRecorded, disabled }) {
           </div>
           <div className="video-note-time">{formatDuration(durationSec)}</div>
           <div className="video-note-controls">
-            <button type="button" className="video-note-controls__cancel" onClick={handleCancel} aria-label="Bekor qilish">
-              ✕
+            <button type="button" className="video-note-controls__cancel" onClick={handleCancel} aria-label="Yozishni bekor qilish">
+              <X size={20} strokeWidth={2} />
             </button>
             <button type="button" className="video-note-controls__send" onClick={handleStop} aria-label="Yuborish">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff">
-                <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
-              </svg>
+              <Send size={20} strokeWidth={2} />
             </button>
           </div>
         </div>

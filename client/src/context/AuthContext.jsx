@@ -1,7 +1,7 @@
 import { createContext, useCallback, useEffect, useState } from 'react';
 import { setAuthToken } from '../api/http.js';
 import { fetchMe } from '../api/users.api.js';
-import { login as loginRequest } from '../api/auth.api.js';
+import { loginWithCredentials, registerWithCredentials } from '../api/auth.api.js';
 
 export const AuthContext = createContext(null);
 
@@ -32,8 +32,24 @@ export function AuthProvider({ children }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = useCallback(async (username) => {
-    const { token: newToken, user: newUser } = await loginRequest(username);
+  const login = useCallback(async ({ username, password }) => {
+    const { token: newToken, user: newUser } = await loginWithCredentials({ username, password });
+    localStorage.setItem(TOKEN_KEY, newToken);
+    setAuthToken(newToken);
+    setToken(newToken);
+    setUser(newUser);
+    return newUser;
+  }, []);
+
+  const register = useCallback(async ({ username, password, firstName, lastName, phone }) => {
+    const { token: newToken, user: newUser } = await registerWithCredentials({
+      username,
+      password,
+      firstName,
+      lastName,
+      phone,
+    });
+
     localStorage.setItem(TOKEN_KEY, newToken);
     setAuthToken(newToken);
     setToken(newToken);
@@ -49,7 +65,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

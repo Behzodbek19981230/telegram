@@ -23,30 +23,54 @@ enum MessageStatus {
   READ
 }
 
+enum ChatType {
+  DIRECT
+  GROUP
+}
+
 model User {
   id          String   @id @default(uuid())
   username    String   @unique
+  telegramId  String?  @unique
   displayName String
+  firstName   String   @default("")
+  lastName    String   @default("")
+  phone       String?  @unique
+  password    String?
+  avatarUrl   String?
+  bio         String?
+  birthday    DateTime?
   isOnline    Boolean  @default(false)
+  isAdmin     Boolean  @default(false)
   lastSeenAt  DateTime @default(now())
   createdAt   DateTime @default(now())
 
-  chatsAsUserA Chat[]    @relation("ChatUserA")
-  chatsAsUserB Chat[]    @relation("ChatUserB")
-  messagesSent Message[] @relation("MessageSender")
+  chatMembers  ChatMember[]
+  messagesSent Message[]    @relation("MessageSender")
 }
 
 model Chat {
-  id        String    @id @default(uuid())
-  userAId   String
-  userBId   String
-  userA     User      @relation("ChatUserA", fields: [userAId], references: [id])
-  userB     User      @relation("ChatUserB", fields: [userBId], references: [id])
-  messages  Message[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String       @id @default(uuid())
+  type      ChatType     @default(DIRECT)
+  name      String?
+  deletedAt DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  @@unique([userAId, userBId])
+  members   ChatMember[]
+  messages  Message[]
+}
+
+model ChatMember {
+  id         String   @id @default(uuid())
+  chatId     String
+  userId     String
+  lastReadAt DateTime @default(now())
+  joinedAt   DateTime @default(now())
+  chat       Chat     @relation(fields: [chatId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([chatId, userId])
 }
 
 model Message {
@@ -60,7 +84,15 @@ model Message {
   mediaUrl      String?
   mediaDuration Int?
   status        MessageStatus @default(SENT)
+  deletedAt     DateTime?
   createdAt     DateTime      @default(now())
+
+  replyToId String?
+  replyTo   Message?  @relation("MessageReply", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReply")
+
+  forwardedFromUserId String?
+  forwardedFromName   String?
 
   @@index([chatId, createdAt])
 }

@@ -7,8 +7,9 @@ const PREVIEW_BY_TYPE = {
   FILE: '📎 Fayl',
 };
 
-export function formatLastMessage(message) {
+export function formatLastMessage(message, { senderName } = {}) {
   if (!message) return 'Xabarlar yo‘q';
-  if (message.type === 'TEXT') return message.content || '';
-  return PREVIEW_BY_TYPE[message.type] || 'Xabar';
+
+  const body = message.type === 'TEXT' ? message.content || '' : PREVIEW_BY_TYPE[message.type] || 'Xabar';
+  return senderName ? `${senderName}: ${body}` : body;
 }

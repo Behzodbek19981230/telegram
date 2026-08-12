@@ -2,7 +2,18 @@ import { useEffect, useRef } from 'react';
 import { MessageBubble } from './MessageBubble.jsx';
 import { TypingIndicator } from './TypingIndicator.jsx';
 
-export function MessageList({ messages, currentUserId, isOtherTyping, hasMore, onLoadMore }) {
+export function MessageList({
+  messages,
+  currentUserId,
+  isGroup,
+  isSomeoneTyping,
+  hasMore,
+  onLoadMore,
+  isSelectionMode,
+  selectedIds,
+  onLongPress,
+  onToggleSelect,
+}) {
   const containerRef = useRef(null);
   const bottomRef = useRef(null);
   const prevScrollHeightRef = useRef(0);
@@ -12,7 +23,7 @@ export function MessageList({ messages, currentUserId, isOtherTyping, hasMore, o
     if (isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ block: 'end' });
     }
-  }, [messages.length, isOtherTyping]);
+  }, [messages.length, isSomeoneTyping]);
 
   function handleScroll() {
     const el = containerRef.current;
@@ -35,9 +46,18 @@ export function MessageList({ messages, currentUserId, isOtherTyping, hasMore, o
   return (
     <div className="message-list" ref={containerRef} onScroll={handleScroll}>
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} isOwn={message.senderId === currentUserId} />
+        <MessageBubble
+          key={message.id}
+          message={message}
+          isOwn={message.senderId === currentUserId}
+          isGroup={isGroup}
+          isSelectionMode={isSelectionMode}
+          isSelected={selectedIds?.has(message.id)}
+          onLongPress={onLongPress}
+          onToggleSelect={onToggleSelect}
+        />
       ))}
-      {isOtherTyping && <TypingIndicator />}
+      {isSomeoneTyping && <TypingIndicator />}
       <div ref={bottomRef} />
     </div>
   );

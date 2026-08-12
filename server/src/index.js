@@ -3,6 +3,10 @@ import { createApp } from './app.js';
 import { createSocketServer } from './sockets/index.js';
 import { env } from './config/env.js';
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err);
+});
+
 const app = createApp();
 const httpServer = http.createServer(app);
 

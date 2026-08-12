@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes.js';
 import usersRoutes from './routes/users.routes.js';
 import chatsRoutes from './routes/chats.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
@@ -22,6 +23,7 @@ export function createApp() {
   app.use('/api/users', usersRoutes);
   app.use('/api/chats', chatsRoutes);
   app.use('/api/upload', uploadRoutes);
+  app.use('/api/admin', adminRoutes);
 
   app.use('/api', notFoundHandler);
   app.use(errorHandler);

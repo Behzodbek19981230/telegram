@@ -1,4 +1,10 @@
-import { getOrCreateChat, assertChatAccess, listChatsForUser, listMessages } from '../services/chat.service.js';
+import {
+  getOrCreateDirectChat,
+  createGroupChat,
+  assertChatAccess,
+  listChatsForUser,
+  listMessages,
+} from '../services/chat.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 
@@ -11,7 +17,15 @@ export const createChat = asyncHandler(async (req, res) => {
   const { otherUserId } = req.body;
   if (!otherUserId) throw new ApiError(400, 'otherUserId is required');
 
-  const chat = await getOrCreateChat(req.user.id, otherUserId);
+  const chat = await getOrCreateDirectChat(req.user.id, otherUserId);
+  res.status(201).json({ chat });
+});
+
+export const createGroup = asyncHandler(async (req, res) => {
+  const { name, memberIds } = req.body;
+  if (!Array.isArray(memberIds)) throw new ApiError(400, 'memberIds must be an array');
+
+  const chat = await createGroupChat(req.user.id, name, memberIds);
   res.status(201).json({ chat });
 });
 

@@ -42,8 +42,19 @@ export function useChats() {
       });
     }
 
+    function handleCleared({ chatId, alsoDeleteChat }) {
+      setChats((prev) => {
+        if (alsoDeleteChat) return prev.filter((c) => c.id !== chatId);
+        return prev.map((c) => (c.id === chatId ? { ...c, lastMessage: null, unreadCount: 0 } : c));
+      });
+    }
+
     socket.on('message:new', handleNewMessage);
-    return () => socket.off('message:new', handleNewMessage);
+    socket.on('chat:cleared', handleCleared);
+    return () => {
+      socket.off('message:new', handleNewMessage);
+      socket.off('chat:cleared', handleCleared);
+    };
   }, [socket, user, reload]);
 
   const clearUnread = useCallback((chatId) => {

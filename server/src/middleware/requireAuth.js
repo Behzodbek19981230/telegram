@@ -11,7 +11,7 @@ export function requireAuth(req, res, next) {
 
   try {
     const payload = verifyToken(token);
-    req.user = { id: payload.sub };
+    req.user = { id: payload.sub, isAdmin: !!payload.isAdmin };
     next();
   } catch {
     next(new ApiError(401, 'Invalid or expired token'));

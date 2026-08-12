@@ -13,8 +13,12 @@ export async function registerSocket(io, userId, socketId) {
   onlineSockets.set(userId, sockets);
 
   if (wasOffline) {
-    const user = await setUserOnline(userId, true);
-    io.emit('presence:update', { userId, isOnline: true, lastSeenAt: user.lastSeenAt });
+    try {
+      const user = await setUserOnline(userId, true);
+      io.emit('presence:update', { userId, isOnline: true, lastSeenAt: user.lastSeenAt });
+    } catch (err) {
+      console.error('Failed to mark user online', userId, err.message);
+    }
   }
 }
 
@@ -25,7 +29,11 @@ export async function unregisterSocket(io, userId, socketId) {
   sockets.delete(socketId);
   if (sockets.size === 0) {
     onlineSockets.delete(userId);
-    const user = await setUserOnline(userId, false);
-    io.emit('presence:update', { userId, isOnline: false, lastSeenAt: user.lastSeenAt });
+    try {
+      const user = await setUserOnline(userId, false);
+      io.emit('presence:update', { userId, isOnline: false, lastSeenAt: user.lastSeenAt });
+    } catch (err) {
+      console.error('Failed to mark user offline', userId, err.message);
+    }
   }
 }

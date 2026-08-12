@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Paperclip, Image, File } from 'lucide-react';
 
 export function AttachMenu({ onFileSelected, disabled }) {
   const [open, setOpen] = useState(false);
@@ -13,7 +14,7 @@ export function AttachMenu({ onFileSelected, disabled }) {
   }
 
   return (
-    <div className="attach-menu">
+    <div className="popup-menu">
       <button
         type="button"
         className="composer__attach"
@@ -21,20 +22,24 @@ export function AttachMenu({ onFileSelected, disabled }) {
         disabled={disabled}
         aria-label="Biriktirish"
       >
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M16.8 6.7v10a4.3 4.3 0 0 1-8.6 0v-11a2.7 2.7 0 0 1 5.4 0v10a1.1 1.1 0 0 1-2.2 0v-9" strokeLinecap="round" />
-        </svg>
+        <Paperclip size={21} strokeWidth={1.9} />
       </button>
 
       {open && (
         <>
-          <div className="attach-menu__backdrop" onClick={() => setOpen(false)} />
-          <div className="attach-menu__popup">
+          <div className="popup-menu__backdrop" onClick={() => setOpen(false)} />
+          <div className="popup-menu__panel">
             <button type="button" onClick={() => mediaInputRef.current?.click()}>
-              <span className="attach-menu__icon">🖼️</span> Rasm yoki video
+              <span className="popup-menu__icon">
+                <Image size={17} strokeWidth={1.8} />
+              </span>
+              Rasm yoki video
             </button>
             <button type="button" onClick={() => fileInputRef.current?.click()}>
-              <span className="attach-menu__icon">📎</span> Fayl
+              <span className="popup-menu__icon">
+                <File size={17} strokeWidth={1.8} />
+              </span>
+              Fayl
             </button>
           </div>
         </>

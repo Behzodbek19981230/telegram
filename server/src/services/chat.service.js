@@ -1,76 +1,183 @@
 import { prisma } from '../lib/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 
-function normalizePair(userId1, userId2) {
-  return userId1 < userId2 ? [userId1, userId2] : [userId2, userId1];
-}
+const PUBLIC_USER_FIELDS = {
+  id: true,
+  username: true,
+  displayName: true,
+  isOnline: true,
+  lastSeenAt: true,
+};
 
-export async function getOrCreateChat(userId1, userId2) {
+const REPLY_INCLUDE = {
+  replyTo: {
+    select: {
+      id: true,
+      type: true,
+      content: true,
+      deletedAt: true,
+      sender: { select: PUBLIC_USER_FIELDS },
+    },
+  },
+};
+
+export async function getOrCreateDirectChat(userId1, userId2) {
   if (userId1 === userId2) {
     throw new ApiError(400, 'Cannot start a chat with yourself');
   }
-  const [userAId, userBId] = normalizePair(userId1, userId2);
 
-  return prisma.chat.upsert({
-    where: { userAId_userBId: { userAId, userBId } },
-    update: {},
-    create: { userAId, userBId },
+  const candidates = await prisma.chat.findMany({
+    where: { type: 'DIRECT', deletedAt: null, members: { some: { userId: userId1 } } },
+    include: { members: true },
+  });
+  const existing = candidates.find(
+    (c) => c.members.length === 2 && c.members.some((m) => m.userId === userId2)
+  );
+  if (existing) return existing;
+
+  return prisma.chat.create({
+    data: {
+      type: 'DIRECT',
+      members: { create: [{ userId: userId1 }, { userId: userId2 }] },
+    },
+    include: { members: true },
+  });
+}
+
+export async function createGroupChat(creatorId, name, memberIds) {
+  const trimmedName = (name || '').trim();
+  if (!trimmedName) throw new ApiError(400, 'Guruh nomi kiritilishi shart');
+  if (trimmedName.length > 60) throw new ApiError(400, 'Guruh nomi juda uzun');
+
+  const uniqueIds = Array.from(new Set([creatorId, ...(memberIds || [])]));
+  if (uniqueIds.length < 2) {
+    throw new ApiError(400, 'Guruhda kamida 1 ta boshqa a\'zo bo\'lishi kerak');
+  }
+
+  return prisma.chat.create({
+    data: {
+      type: 'GROUP',
+      name: trimmedName,
+      members: { create: uniqueIds.map((userId) => ({ userId })) },
+    },
+    include: { members: { include: { user: true } } },
   });
 }
 
 export async function assertChatAccess(chatId, userId) {
-  const chat = await prisma.chat.findUnique({ where: { id: chatId } });
-  if (!chat) throw new ApiError(404, 'Chat not found');
-  if (chat.userAId !== userId && chat.userBId !== userId) {
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
+    include: { members: true },
+  });
+  if (!chat || chat.deletedAt) throw new ApiError(404, 'Chat not found');
+  if (!chat.members.some((m) => m.userId === userId)) {
     throw new ApiError(403, 'Not a participant of this chat');
   }
   return chat;
 }
 
-function otherUserIdOf(chat, userId) {
-  return chat.userAId === userId ? chat.userBId : chat.userAId;
+export function memberIdsOf(chat) {
+  return chat.members.map((m) => m.userId);
+}
+
+export function otherMemberIdOf(chat, userId) {
+  const other = chat.members.find((m) => m.userId !== userId);
+  return other?.userId ?? null;
+}
+
+function toPublicUser(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    isOnline: user.isOnline,
+    lastSeenAt: user.lastSeenAt,
+  };
 }
 
 export async function listChatsForUser(userId) {
-  const chats = await prisma.chat.findMany({
-    where: { OR: [{ userAId: userId }, { userBId: userId }] },
-    orderBy: { updatedAt: 'desc' },
+  const memberships = await prisma.chatMember.findMany({
+    where: { userId, chat: { deletedAt: null } },
     include: {
-      userA: true,
-      userB: true,
-      messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+      chat: {
+        include: {
+          members: { include: { user: true } },
+          messages: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: { sender: { select: PUBLIC_USER_FIELDS } },
+          },
+        },
+      },
     },
   });
 
-  return Promise.all(
-    chats.map(async (chat) => {
-      const otherUser = chat.userAId === userId ? chat.userB : chat.userA;
+  const results = await Promise.all(
+    memberships.map(async ({ chat, lastReadAt }) => {
       const unreadCount = await prisma.message.count({
-        where: { chatId: chat.id, senderId: { not: userId }, status: { not: 'READ' } },
+        where: { chatId: chat.id, senderId: { not: userId }, deletedAt: null, createdAt: { gt: lastReadAt } },
       });
 
-      return {
+      const base = {
         id: chat.id,
-        otherUser: {
-          id: otherUser.id,
-          username: otherUser.username,
-          displayName: otherUser.displayName,
-          isOnline: otherUser.isOnline,
-          lastSeenAt: otherUser.lastSeenAt,
-        },
+        type: chat.type,
         lastMessage: chat.messages[0] ?? null,
         unreadCount,
         updatedAt: chat.updatedAt,
       };
+
+      if (chat.type === 'DIRECT') {
+        const otherMember = chat.members.find((m) => m.userId !== userId);
+        return { ...base, otherUser: otherMember ? toPublicUser(otherMember.user) : null };
+      }
+
+      return {
+        ...base,
+        name: chat.name,
+        memberCount: chat.members.length,
+        members: chat.members.map((m) => toPublicUser(m.user)),
+      };
     })
   );
+
+  return results.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+}
+
+export async function markChatRead(chat, userId) {
+  const now = new Date();
+  await prisma.chatMember.update({
+    where: { chatId_userId: { chatId: chat.id, userId } },
+    data: { lastReadAt: now },
+  });
+
+  if (chat.type !== 'DIRECT') return [];
+
+  const affected = await prisma.message.findMany({
+    where: {
+      chatId: chat.id,
+      senderId: { not: userId },
+      status: { not: 'READ' },
+      deletedAt: null,
+      createdAt: { lte: now },
+    },
+    select: { id: true },
+  });
+  if (affected.length === 0) return [];
+
+  await prisma.message.updateMany({
+    where: { id: { in: affected.map((m) => m.id) } },
+    data: { status: 'READ' },
+  });
+  return affected.map((m) => m.id);
 }
 
 export async function listMessages(chatId, { cursor, limit = 30 }) {
   const messages = await prisma.message.findMany({
-    where: { chatId },
+    where: { chatId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: limit + 1,
+    include: { sender: { select: PUBLIC_USER_FIELDS }, ...REPLY_INCLUDE },
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
 
@@ -83,4 +190,30 @@ export async function listMessages(chatId, { cursor, limit = 30 }) {
   };
 }
 
-export { otherUserIdOf };
+export async function clearChatHistory(chatId, alsoDeleteChat) {
+  const now = new Date();
+  await prisma.message.updateMany({
+    where: { chatId, deletedAt: null },
+    data: { deletedAt: now },
+  });
+  if (alsoDeleteChat) {
+    await prisma.chat.update({ where: { id: chatId }, data: { deletedAt: now } });
+  }
+}
+
+export async function softDeleteMessages(chatId, messageIds) {
+  const result = await prisma.message.updateMany({
+    where: { chatId, id: { in: messageIds }, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  return result.count;
+}
+
+export async function getMessagesByIds(ids) {
+  return prisma.message.findMany({
+    where: { id: { in: ids }, deletedAt: null },
+    include: { sender: { select: PUBLIC_USER_FIELDS } },
+  });
+}
+
+export { REPLY_INCLUDE, PUBLIC_USER_FIELDS };

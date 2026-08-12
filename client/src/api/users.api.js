@@ -7,3 +7,7 @@ export function fetchMe() {
 export function fetchUsers() {
   return http.get('/users').then((res) => res.data.users);
 }
+
+export function updateProfile(data) {
+  return http.patch('/users/me', data).then((res) => res.data.user);
+}
