@@ -14,7 +14,7 @@ const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 export function createApp() {
   const app = express();
 
-  app.use(cors({ origin: env.clientOrigin }));
+  app.use(cors({ origin: env.clientOrigins, credentials: true }));
   app.use(express.json());
   app.use('/uploads', express.static(UPLOAD_DIR));
 

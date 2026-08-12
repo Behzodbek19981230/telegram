@@ -7,7 +7,7 @@ import { registerCallHandlers } from './call.handlers.js';
 
 export function createSocketServer(httpServer) {
   const io = new Server(httpServer, {
-    cors: { origin: env.clientOrigin },
+    cors: { origin: env.clientOrigins, credentials: true },
   });
 
   io.use(socketAuth);

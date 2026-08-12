@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { formatDuration } from '../../utils/formatTime.js';
+import { resolveMediaUrl } from '../../config/api.js';
 
 export function MessageBubbleVoice({ message }) {
+  const src = resolveMediaUrl(message.mediaUrl);
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -38,7 +40,7 @@ export function MessageBubbleVoice({ message }) {
       <span className="bubble-voice__duration">{formatDuration(message.mediaDuration || 0)}</span>
       <audio
         ref={audioRef}
-        src={message.mediaUrl}
+        src={src}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}

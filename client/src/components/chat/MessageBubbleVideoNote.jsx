@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
+import { resolveMediaUrl } from '../../config/api.js';
 
 const SIZE = 200;
 
 export function MessageBubbleVideoNote({ message }) {
+  const src = resolveMediaUrl(message.mediaUrl);
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -17,7 +19,7 @@ export function MessageBubbleVideoNote({ message }) {
     <div className="bubble-video-note" style={{ width: SIZE, height: SIZE }} onClick={toggle}>
       <video
         ref={videoRef}
-        src={message.mediaUrl}
+        src={src}
         playsInline
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}

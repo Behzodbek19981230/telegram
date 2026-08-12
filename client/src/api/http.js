@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '../config/api.js';
 
-export const http = axios.create({ baseURL: '/api' });
+export const http = axios.create({ baseURL: getApiBaseUrl() });
 
 let authToken = null;
 

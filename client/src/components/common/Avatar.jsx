@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AvatarLightbox } from './AvatarLightbox.jsx';
+import { resolveMediaUrl } from '../../config/api.js';
 
 const PALETTE_SIZE = 5;
 
@@ -25,6 +26,7 @@ function initialsFromName(name) {
 export function Avatar({ userId, name, avatarUrl, size = 48, className = '', expandable = false }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const canExpand = expandable && Boolean(avatarUrl);
+  const imageUrl = resolveMediaUrl(avatarUrl);
 
   const style = {
     width: size,
@@ -68,13 +70,13 @@ export function Avatar({ userId, name, avatarUrl, size = 48, className = '', exp
         aria-label={canExpand ? `${name || 'Avatar'} rasmini kattalashtirish` : undefined}
       >
         {avatarUrl ? (
-          <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
+          <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
         ) : (
           initialsFromName(name || '?')
         )}
       </div>
       {lightboxOpen && (
-        <AvatarLightbox avatarUrl={avatarUrl} name={name} onClose={() => setLightboxOpen(false)} />
+        <AvatarLightbox avatarUrl={imageUrl} name={name} onClose={() => setLightboxOpen(false)} />
       )}
     </>
   );
