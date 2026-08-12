@@ -37,7 +37,7 @@ export function ActiveCallScreen() {
         </>
       ) : (
         <div className="call-overlay__user">
-          <Avatar userId={otherUser.id} name={otherUser.displayName} size={110} />
+          <Avatar userId={otherUser.id} name={otherUser.displayName} avatarUrl={otherUser.avatarUrl} size={110} />
         </div>
       )}
 

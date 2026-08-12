@@ -52,7 +52,7 @@ export function SettingsPage() {
 
       <div className="page-body settings-body">
         <button type="button" className="settings-profile-card" onClick={() => navigate('/profile')}>
-          <Avatar userId={user?.id || 'x'} name={user?.displayName || 'User'} avatarUrl={user?.avatarUrl} size={96} />
+          <Avatar userId={user?.id || 'x'} name={user?.displayName || 'User'} avatarUrl={user?.avatarUrl} size={96} expandable />
           <h2>{user?.displayName || 'User'}</h2>
           <p>{phoneText}</p>
         </button>

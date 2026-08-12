@@ -14,6 +14,7 @@ export function ChatListItem({ chat }) {
 
   const title = isGroup ? chat.name : chat.otherUser.displayName;
   const avatarSeed = isGroup ? chat.id : chat.otherUser.id;
+  const avatarUrl = isGroup ? null : chat.otherUser.avatarUrl;
 
   let senderName;
   if (isGroup && lastMessage) {
@@ -23,7 +24,7 @@ export function ChatListItem({ chat }) {
   return (
     <button className="chat-list-item" onClick={() => navigate(`/chat/${chat.id}`)}>
       <div className="chat-list-item__avatar">
-        <Avatar userId={avatarSeed} name={title} size={52} />
+        <Avatar userId={avatarSeed} name={title} avatarUrl={avatarUrl} size={52} expandable />
         {!isGroup && <PresenceDot isOnline={chat.otherUser.isOnline} />}
       </div>
       <div className="chat-list-item__body">

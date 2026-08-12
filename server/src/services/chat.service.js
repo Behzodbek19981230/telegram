@@ -5,6 +5,7 @@ const PUBLIC_USER_FIELDS = {
   id: true,
   username: true,
   displayName: true,
+  avatarUrl: true,
   isOnline: true,
   lastSeenAt: true,
 };
@@ -90,6 +91,7 @@ function toPublicUser(user) {
     id: user.id,
     username: user.username,
     displayName: user.displayName,
+    avatarUrl: user.avatarUrl ?? null,
     isOnline: user.isOnline,
     lastSeenAt: user.lastSeenAt,
   };

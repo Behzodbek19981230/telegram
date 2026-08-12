@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { AvatarLightbox } from './AvatarLightbox.jsx';
+
 const PALETTE_SIZE = 5;
 
 function paletteIndexFromId(id) {
@@ -19,7 +22,10 @@ function initialsFromName(name) {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-export function Avatar({ userId, name, avatarUrl, size = 48, className = '' }) {
+export function Avatar({ userId, name, avatarUrl, size = 48, className = '', expandable = false }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const canExpand = expandable && Boolean(avatarUrl);
+
   const style = {
     width: size,
     height: size,
@@ -36,17 +42,40 @@ export function Avatar({ userId, name, avatarUrl, size = 48, className = '' }) {
     overflow: 'hidden',
   };
 
-  if (avatarUrl) {
-    return (
-      <div className={`avatar ${className}`} style={style}>
-        <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      </div>
-    );
+  function openLightbox(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    setLightboxOpen(true);
   }
 
+  const rootClass = ['avatar', className, canExpand ? 'avatar--expandable' : ''].filter(Boolean).join(' ');
+
   return (
-    <div className={`avatar ${className}`} style={style}>
-      {initialsFromName(name || '?')}
-    </div>
+    <>
+      <div
+        className={rootClass}
+        style={style}
+        onClick={canExpand ? openLightbox : undefined}
+        onKeyDown={
+          canExpand
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') openLightbox(e);
+              }
+            : undefined
+        }
+        role={canExpand ? 'button' : undefined}
+        tabIndex={canExpand ? 0 : undefined}
+        aria-label={canExpand ? `${name || 'Avatar'} rasmini kattalashtirish` : undefined}
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
+        ) : (
+          initialsFromName(name || '?')
+        )}
+      </div>
+      {lightboxOpen && (
+        <AvatarLightbox avatarUrl={avatarUrl} name={name} onClose={() => setLightboxOpen(false)} />
+      )}
+    </>
   );
 }

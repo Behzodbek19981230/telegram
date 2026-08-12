@@ -6,7 +6,7 @@ export function ContactListItem({ user, onSelect }) {
   return (
     <button className="contact-list-item" onClick={() => onSelect(user)}>
       <div className="chat-list-item__avatar">
-        <Avatar userId={user.id} name={user.displayName} size={48} />
+        <Avatar userId={user.id} name={user.displayName} avatarUrl={user.avatarUrl} size={48} expandable />
         <PresenceDot isOnline={user.isOnline} />
       </div>
       <div className="contact-list-item__body">

@@ -63,7 +63,7 @@ export function ChatListPage() {
 			<header className='chatlist-header'>
 				<div className='chatlist-header__top'>
 					<button className='chatlist-header__avatar' onClick={logout} aria-label='Chiqish' title='Chiqish'>
-						<Avatar userId={user.id} name={user.displayName} avatarUrl={user.avatarUrl} size={34} />
+						<Avatar userId={user.id} name={user.displayName} avatarUrl={user.avatarUrl} size={34} expandable />
 					</button>
 					<h1>Telegram</h1>
 					<div className='chatlist-header__actions'>

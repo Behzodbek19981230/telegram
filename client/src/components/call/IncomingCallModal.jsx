@@ -9,7 +9,7 @@ export function IncomingCallModal() {
   return (
     <div className="call-overlay call-overlay--incoming">
       <div className="call-overlay__user">
-        <Avatar userId={otherUser.id} name={otherUser.displayName} size={104} />
+        <Avatar userId={otherUser.id} name={otherUser.displayName} avatarUrl={otherUser.avatarUrl} size={104} />
         <h2>{otherUser.displayName}</h2>
         <p>{callType === 'video' ? 'Video qo‘ng‘iroq qilyapti...' : 'Ovozli qo‘ng‘iroq qilyapti...'}</p>
       </div>

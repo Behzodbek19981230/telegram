@@ -106,7 +106,7 @@ export function CreateGroupPage() {
         {liveUsers.map((user) => (
           <button key={user.id} type="button" className="contact-list-item" onClick={() => toggleUser(user.id)}>
             <div className="chat-list-item__avatar">
-              <Avatar userId={user.id} name={user.displayName} size={48} />
+              <Avatar userId={user.id} name={user.displayName} avatarUrl={user.avatarUrl} size={48} />
               <PresenceDot isOnline={user.isOnline} />
             </div>
             <div className="contact-list-item__body">

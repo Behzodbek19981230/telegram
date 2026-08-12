@@ -23,7 +23,7 @@ export function ChatHeader({ chat, typingText, onClearHistory, onDeleteChat }) {
     <header className="chat-header">
       <BackButton to="/chats" />
       <div className="chat-header__profile">
-        <Avatar userId={avatarSeed} name={title} avatarUrl={avatarUrl} size={42} />
+        <Avatar userId={avatarSeed} name={title} avatarUrl={avatarUrl} size={42} expandable />
         <div className="chat-header__info">
           <span className="chat-header__name">{title}</span>
           <span className={`chat-header__status ${typingText ? 'chat-header__status--typing' : ''}`}>

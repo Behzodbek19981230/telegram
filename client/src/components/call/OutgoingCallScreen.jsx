@@ -9,7 +9,7 @@ export function OutgoingCallScreen() {
   return (
     <div className="call-overlay call-overlay--outgoing">
       <div className="call-overlay__user">
-        <Avatar userId={otherUser.id} name={otherUser.displayName} size={110} />
+        <Avatar userId={otherUser.id} name={otherUser.displayName} avatarUrl={otherUser.avatarUrl} size={110} />
         <h2>{otherUser.displayName}</h2>
         <p>{callType === 'video' ? 'Video qo‘ng‘iroq qilinmoqda...' : 'Chaqirilmoqda...'}</p>
       </div>

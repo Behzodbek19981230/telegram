@@ -34,6 +34,7 @@ export function ForwardDialog({ onSelect, onClose }) {
               const isGroup = chat.type === 'GROUP';
               const title = isGroup ? chat.name : chat.otherUser.displayName;
               const avatarSeed = isGroup ? chat.id : chat.otherUser.id;
+              const avatarUrl = isGroup ? null : chat.otherUser.avatarUrl;
               return (
                 <button
                   key={chat.id}
@@ -41,7 +42,7 @@ export function ForwardDialog({ onSelect, onClose }) {
                   className="forward-dialog__item"
                   onClick={() => onSelect(chat.id)}
                 >
-                  <Avatar userId={avatarSeed} name={title} size={40} />
+                  <Avatar userId={avatarSeed} name={title} avatarUrl={avatarUrl} size={40} expandable />
                   <span>{title}</span>
                 </button>
               );

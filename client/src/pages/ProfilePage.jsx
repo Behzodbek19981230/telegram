@@ -132,18 +132,18 @@ export function ProfilePage() {
 
       <div className="page-body profile-body">
         <div className="profile-hero">
-          <button
-            type="button"
-            className="profile-avatar-btn"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isSaving}
-            aria-label="Avatar yuklash"
-          >
-            <Avatar userId={user?.id} name={displayName} avatarUrl={user?.avatarUrl} size={120} />
-            <span className="profile-avatar-btn__camera">
+          <div className="profile-avatar-btn">
+            <Avatar userId={user?.id} name={displayName} avatarUrl={user?.avatarUrl} size={120} expandable />
+            <button
+              type="button"
+              className="profile-avatar-btn__camera"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSaving}
+              aria-label="Avatar yuklash"
+            >
               <Camera size={16} strokeWidth={2} />
-            </span>
-          </button>
+            </button>
+          </div>
           <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleAvatarChange} />
 
           <div className="profile-hero__name">
