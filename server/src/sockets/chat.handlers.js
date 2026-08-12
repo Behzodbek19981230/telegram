@@ -90,10 +90,15 @@ export function registerChatHandlers(io, socket) {
 
   socket.on('message:delete', async (payload) => {
     try {
-      const { chatId, messageIds } = payload || {};
-      if (!chatId || !Array.isArray(messageIds) || messageIds.length === 0) return;
+      const { chatId, messageIds, forEveryone } = payload || {};
+      if (!forEveryone || !chatId || !Array.isArray(messageIds) || messageIds.length === 0) return;
 
       const chat = await assertChatAccess(chatId, socket.userId);
+      const messages = await getMessagesByIds(messageIds);
+      const canDeleteForEveryone = messages.length === messageIds.length
+        && messages.every((message) => message.senderId === socket.userId);
+      if (!canDeleteForEveryone) return;
+
       await softDeleteMessages(chatId, messageIds);
       io.to(memberIdsOf(chat)).emit('message:deleted', { chatId, messageIds });
     } catch {

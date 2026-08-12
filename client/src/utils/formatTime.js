@@ -1,3 +1,29 @@
+export function isSameDay(dateA, dateB) {
+  return new Date(dateA).toDateString() === new Date(dateB).toDateString();
+}
+
+export function formatChatDateDivider(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+
+  if (isSameDay(date, now)) {
+    return 'Bugun';
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameDay(date, yesterday)) {
+    return 'Kecha';
+  }
+
+  const options =
+    date.getFullYear() === now.getFullYear()
+      ? { day: 'numeric', month: 'long' }
+      : { day: 'numeric', month: 'long', year: 'numeric' };
+
+  return date.toLocaleDateString('uz-UZ', options);
+}
+
 export function formatBubbleTime(dateString) {
   const date = new Date(dateString);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchMessages } from '../api/chats.api.js';
 import { useSocket } from './useSocket.js';
 import { useAuth } from './useAuth.js';
+import { filterHiddenMessages, hideMessagesLocally } from '../utils/hiddenMessages.js';
 
 export function useMessages(chatId) {
   const socket = useSocket();
@@ -18,20 +19,20 @@ export function useMessages(chatId) {
     cursorRef.current = null;
 
     fetchMessages(chatId).then(({ messages: page, nextCursor }) => {
-      setMessages(page);
+      setMessages(filterHiddenMessages(user?.id, chatId, page));
       cursorRef.current = nextCursor;
       setHasMore(Boolean(nextCursor));
       setIsLoading(false);
     });
-  }, [chatId]);
+  }, [chatId, user?.id]);
 
   const loadMore = useCallback(async () => {
     if (!cursorRef.current) return;
     const { messages: page, nextCursor } = await fetchMessages(chatId, cursorRef.current);
-    setMessages((prev) => [...page, ...prev]);
+    setMessages((prev) => [...filterHiddenMessages(user?.id, chatId, page), ...prev]);
     cursorRef.current = nextCursor;
     setHasMore(Boolean(nextCursor));
-  }, [chatId]);
+  }, [chatId, user?.id]);
 
   useEffect(() => {
     if (!socket) return;
@@ -113,12 +114,20 @@ export function useMessages(chatId) {
   );
 
   const deleteMessages = useCallback(
-    (messageIds) => {
-      if (!socket || messageIds.length === 0) return;
+    (messageIds, { forEveryone = false } = {}) => {
+      if (messageIds.length === 0 || !user?.id) return;
+
+      if (forEveryone) {
+        setMessages((prev) => prev.filter((m) => !messageIds.includes(m.id)));
+        if (!socket) return;
+        socket.emit('message:delete', { chatId, messageIds, forEveryone: true });
+        return;
+      }
+
+      hideMessagesLocally(user.id, chatId, messageIds);
       setMessages((prev) => prev.filter((m) => !messageIds.includes(m.id)));
-      socket.emit('message:delete', { chatId, messageIds });
     },
-    [socket, chatId]
+    [socket, chatId, user?.id]
   );
 
   const markRead = useCallback(() => {

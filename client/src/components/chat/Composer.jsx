@@ -57,7 +57,7 @@ export function Composer({
   const isRecording = recordingType !== null;
 
   return (
-    <div className="composer-wrap">
+    <div className={`composer-wrap ${isRecording ? 'composer-wrap--recording' : ''}`}>
       {replyingTo && (
         <div className="reply-preview">
           <div className="reply-preview__body">

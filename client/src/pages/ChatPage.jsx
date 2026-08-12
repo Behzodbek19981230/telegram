@@ -13,8 +13,14 @@ import { SelectionToolbar } from '../components/chat/SelectionToolbar.jsx';
 import { MessageList } from '../components/chat/MessageList.jsx';
 import { Composer } from '../components/chat/Composer.jsx';
 import { ForwardDialog } from '../components/chat/ForwardDialog.jsx';
+import { DeleteMessagesDialog } from '../components/chat/DeleteMessagesDialog.jsx';
 import { ConfirmDialog } from '../components/common/ConfirmDialog.jsx';
 import { Spinner } from '../components/common/Spinner.jsx';
+
+function isOwnMessage(message, userId) {
+  if (!message || !userId) return false;
+  return message.senderId === userId || message.sender?.id === userId;
+}
 
 export function ChatPage() {
   const { chatId } = useParams();
@@ -29,6 +35,7 @@ export function ChatPage() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [isForwarding, setIsForwarding] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,23 +134,43 @@ export function ChatPage() {
   }
 
   function handleDeleteSelected() {
-    const ids = [...selectedIds];
-    setConfirmAction({
-      title: 'Xabarlarni o‘chirish',
-      message: `${ids.length} ta xabar o‘chiriladi. Bu amalni ortga qaytarib bo‘lmaydi.`,
-      actions: [
-        {
-          label: 'O‘chirish',
-          variant: 'danger',
-          onClick: () => {
-            deleteMessages(ids);
-            clearSelection();
-            setConfirmAction(null);
-          },
-        },
-      ],
-    });
+    setShowDeleteDialog(true);
   }
+
+  function handleConfirmDelete({ forEveryone }) {
+    const ids = [...selectedIds];
+    const ownIds = [];
+    const otherIds = [];
+
+    for (const id of ids) {
+      const message = messages.find((m) => m.id === id);
+      if (isOwnMessage(message, user.id)) ownIds.push(id);
+      else otherIds.push(id);
+    }
+
+    if (forEveryone && ownIds.length > 0) {
+      deleteMessages(ownIds, { forEveryone: true });
+    }
+
+    const localOnlyIds = forEveryone ? otherIds : ids;
+    if (localOnlyIds.length > 0) {
+      deleteMessages(localOnlyIds, { forEveryone: false });
+    }
+
+    clearSelection();
+    setShowDeleteDialog(false);
+  }
+
+  const hasOwnSelected = useMemo(() => {
+    if (selectedIds.size === 0) return false;
+    return [...selectedIds].some((id) => isOwnMessage(messages.find((m) => m.id === id), user.id));
+  }, [selectedIds, messages, user.id]);
+
+  const deletePeerName = useMemo(() => {
+    if (!chat) return '';
+    if (chat.type === 'GROUP') return 'barcha a\'zolar';
+    return chat.otherUser?.displayName || chat.otherUser?.username || 'suhbatdosh';
+  }, [chat]);
 
   function handleClearHistory() {
     setConfirmAction({
@@ -242,6 +269,16 @@ export function ChatPage() {
       />
 
       {isForwarding && <ForwardDialog onSelect={handleForwardTo} onClose={() => setIsForwarding(false)} />}
+      {showDeleteDialog && (
+        <DeleteMessagesDialog
+          key={[...selectedIds].join(',')}
+          count={selectedIds.size}
+          peerName={deletePeerName}
+          showAlsoDeleteForPeer={!isGroup || hasOwnSelected}
+          onCancel={() => setShowDeleteDialog(false)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
       {confirmAction && <ConfirmDialog {...confirmAction} onCancel={() => setConfirmAction(null)} />}
     </div>
   );
