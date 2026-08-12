@@ -14,6 +14,7 @@ import { MessageList } from '../components/chat/MessageList.jsx';
 import { Composer } from '../components/chat/Composer.jsx';
 import { ForwardDialog } from '../components/chat/ForwardDialog.jsx';
 import { DeleteMessagesDialog } from '../components/chat/DeleteMessagesDialog.jsx';
+import { GroupInfoPanel } from '../components/chat/GroupInfoPanel.jsx';
 import { ConfirmDialog } from '../components/common/ConfirmDialog.jsx';
 import { Spinner } from '../components/common/Spinner.jsx';
 
@@ -36,6 +37,17 @@ export function ChatPage() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [isForwarding, setIsForwarding] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+
+  function refreshChatMeta(updated) {
+    if (updated) {
+      setChatMeta((prev) => (prev ? { ...prev, ...updated } : updated));
+      return;
+    }
+    fetchChats().then((chats) => {
+      setChatMeta(chats.find((c) => c.id === chatId) || null);
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +76,10 @@ export function ChatPage() {
     if (chatMeta.type === 'DIRECT') {
       return { ...chatMeta, otherUser: withPresence(chatMeta.otherUser, presenceMap) };
     }
-    return chatMeta;
+    return {
+      ...chatMeta,
+      members: chatMeta.members?.map((m) => withPresence(m, presenceMap)),
+    };
   }, [chatMeta, presenceMap]);
 
   const typingText = useMemo(() => {
@@ -237,6 +252,7 @@ export function ChatPage() {
           typingText={typingText}
           onClearHistory={handleClearHistory}
           onDeleteChat={handleDeleteChat}
+          onOpenGroupInfo={() => setShowGroupInfo(true)}
         />
       )}
       {isLoading ? (
@@ -280,6 +296,14 @@ export function ChatPage() {
         />
       )}
       {confirmAction && <ConfirmDialog {...confirmAction} onCancel={() => setConfirmAction(null)} />}
+      {showGroupInfo && isGroup && (
+        <GroupInfoPanel
+          chat={chat}
+          currentUserId={user.id}
+          onClose={() => setShowGroupInfo(false)}
+          onMembersUpdated={refreshChatMeta}
+        />
+      )}
     </div>
   );
 }

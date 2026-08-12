@@ -156,6 +156,19 @@ export async function listOtherUsers(currentUserId) {
   });
 }
 
+export async function findOtherUserByExactUsername(currentUserId, rawUsername) {
+  const normalized = normalizeUsername(String(rawUsername).replace(/^@+/, ''));
+  if (!normalized) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { username: normalized },
+    select: PUBLIC_USER_FIELDS,
+  });
+
+  if (!user || user.id === currentUserId) return null;
+  return user;
+}
+
 export async function setUserOnline(userId, isOnline) {
   return prisma.user.update({
     where: { id: userId },

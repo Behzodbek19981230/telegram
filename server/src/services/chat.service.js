@@ -146,6 +146,76 @@ export async function listChatsForUser(userId) {
   return results.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
+export async function listContactUsers(userId) {
+  const memberships = await prisma.chatMember.findMany({
+    where: {
+      userId,
+      chat: { type: 'DIRECT' },
+    },
+    include: {
+      chat: {
+        include: {
+          members: { include: { user: true } },
+        },
+      },
+    },
+  });
+
+  const userMap = new Map();
+  for (const { chat } of memberships) {
+    const otherMember = chat.members.find((m) => m.userId !== userId);
+    if (otherMember?.user) {
+      userMap.set(otherMember.user.id, toPublicUser(otherMember.user));
+    }
+  }
+
+  return [...userMap.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+export function formatGroupChat(chat) {
+  return {
+    id: chat.id,
+    type: chat.type,
+    name: chat.name,
+    memberCount: chat.members.length,
+    members: chat.members.map((m) => toPublicUser(m.user)),
+    updatedAt: chat.updatedAt,
+  };
+}
+
+export async function getGroupChatDetails(chatId, userId) {
+  const chat = await assertChatAccess(chatId, userId);
+  if (chat.type !== 'GROUP') throw new ApiError(400, 'Not a group chat');
+
+  const full = await prisma.chat.findUnique({
+    where: { id: chatId },
+    include: { members: { include: { user: true } } },
+  });
+
+  return formatGroupChat(full);
+}
+
+export async function addGroupMembers(chatId, userId, memberIds) {
+  const chat = await assertChatAccess(chatId, userId);
+  if (chat.type !== 'GROUP') throw new ApiError(400, 'Not a group chat');
+
+  const existingIds = new Set(chat.members.map((m) => m.userId));
+  const newIds = [...new Set(memberIds)].filter((id) => id !== userId && !existingIds.has(id));
+
+  if (newIds.length > 0) {
+    await prisma.chatMember.createMany({
+      data: newIds.map((uid) => ({ chatId, userId: uid })),
+      skipDuplicates: true,
+    });
+    await prisma.chat.update({
+      where: { id: chatId },
+      data: { updatedAt: new Date() },
+    });
+  }
+
+  return getGroupChatDetails(chatId, userId);
+}
+
 export async function markChatRead(chat, userId) {
   const now = new Date();
   await prisma.chatMember.update({

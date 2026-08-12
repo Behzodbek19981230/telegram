@@ -4,6 +4,8 @@ import {
   assertChatAccess,
   listChatsForUser,
   listMessages,
+  getGroupChatDetails,
+  addGroupMembers,
 } from '../services/chat.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -38,4 +40,19 @@ export const getMessages = asyncHandler(async (req, res) => {
 
   const result = await listMessages(chatId, { cursor, limit });
   res.json(result);
+});
+
+export const getChat = asyncHandler(async (req, res) => {
+  const { chatId } = req.params;
+  const chat = await getGroupChatDetails(chatId, req.user.id);
+  res.json({ chat });
+});
+
+export const addChatMembers = asyncHandler(async (req, res) => {
+  const { chatId } = req.params;
+  const { memberIds } = req.body;
+  if (!Array.isArray(memberIds)) throw new ApiError(400, 'memberIds must be an array');
+
+  const chat = await addGroupMembers(chatId, req.user.id, memberIds);
+  res.json({ chat });
 });

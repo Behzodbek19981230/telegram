@@ -16,3 +16,11 @@ export function fetchMessages(chatId, cursor) {
   const params = cursor ? { cursor } : {};
   return http.get(`/chats/${chatId}/messages`, { params }).then((res) => res.data);
 }
+
+export function fetchChat(chatId) {
+  return http.get(`/chats/${chatId}`).then((res) => res.data.chat);
+}
+
+export function addGroupMembers(chatId, memberIds) {
+  return http.post(`/chats/${chatId}/members`, { memberIds }).then((res) => res.data.chat);
+}

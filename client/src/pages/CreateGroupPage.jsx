@@ -99,7 +99,7 @@ export function CreateGroupPage() {
 
         {!isLoading && liveUsers.length === 0 && (
           <div className="empty-state">
-            <p>Boshqa foydalanuvchilar hali ro‘yxatdan o‘tmagan</p>
+            <p>Suhbat tarixidagi kontaktlar yo‘q</p>
           </div>
         )}
 

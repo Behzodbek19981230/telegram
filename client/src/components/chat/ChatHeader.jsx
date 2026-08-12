@@ -5,7 +5,7 @@ import { ChatMenu } from './ChatMenu.jsx';
 import { useCall } from '../../hooks/useCall.js';
 import { formatLastSeen } from '../../utils/formatTime.js';
 
-export function ChatHeader({ chat, typingText, onClearHistory, onDeleteChat }) {
+export function ChatHeader({ chat, typingText, onClearHistory, onDeleteChat, onOpenGroupInfo }) {
   const { startCall, status } = useCall();
   const canCall = status === 'idle';
   const isGroup = chat.type === 'GROUP';
@@ -19,18 +19,28 @@ export function ChatHeader({ chat, typingText, onClearHistory, onDeleteChat }) {
       ? `${chat.memberCount} a'zo`
       : formatLastSeen(chat.otherUser.lastSeenAt, chat.otherUser.isOnline));
 
+  const profileContent = (
+    <>
+      <Avatar userId={avatarSeed} name={title} avatarUrl={avatarUrl} size={42} expandable={!isGroup && Boolean(avatarUrl)} />
+      <div className="chat-header__info">
+        <span className="chat-header__name">{title}</span>
+        <span className={`chat-header__status ${typingText ? 'chat-header__status--typing' : ''}`}>
+          {subtitle}
+        </span>
+      </div>
+    </>
+  );
+
   return (
     <header className="chat-header">
       <BackButton to="/chats" />
-      <div className="chat-header__profile">
-        <Avatar userId={avatarSeed} name={title} avatarUrl={avatarUrl} size={42} expandable />
-        <div className="chat-header__info">
-          <span className="chat-header__name">{title}</span>
-          <span className={`chat-header__status ${typingText ? 'chat-header__status--typing' : ''}`}>
-            {subtitle}
-          </span>
-        </div>
-      </div>
+      {isGroup ? (
+        <button type="button" className="chat-header__profile chat-header__profile--clickable" onClick={onOpenGroupInfo}>
+          {profileContent}
+        </button>
+      ) : (
+        <div className="chat-header__profile">{profileContent}</div>
+      )}
       <div className="chat-header__actions">
         {!isGroup && (
           <>
