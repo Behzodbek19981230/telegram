@@ -51,15 +51,20 @@ export function MessageBubble({
   message,
   isOwn,
   isGroup,
+  groupPosition = 'single',
+  continued = false,
   isSelectionMode,
   isSelected,
   onLongPress,
   onToggleSelect,
 }) {
   const Content = CONTENT_BY_TYPE[message.type] || MessageBubbleText;
-  const showSenderName = isGroup && !isOwn;
+  const showSenderName = isGroup && !isOwn && (groupPosition === 'single' || groupPosition === 'first');
   const showTicks = isOwn && !isGroup;
   const pressTimerRef = useRef(null);
+  const isMedia = message.type === 'IMAGE' || message.type === 'VIDEO';
+  const isVideoNote = message.type === 'VIDEO_NOTE';
+  const hasTail = groupPosition === 'single' || groupPosition === 'last';
 
   function handlePointerDown() {
     if (isSelectionMode) return;
@@ -70,9 +75,14 @@ export function MessageBubble({
     clearTimeout(pressTimerRef.current);
   }
 
-  const rowClassName = `bubble-row ${isOwn ? 'bubble-row--own' : ''} ${
-    isSelectionMode ? 'bubble-row--selectable' : ''
-  }`;
+  const rowClassName = [
+    'bubble-row',
+    isOwn ? 'bubble-row--own' : '',
+    continued ? 'bubble-row--continued' : '',
+    isSelectionMode ? 'bubble-row--selectable' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const meta = (
     <span className="bubble-meta">
@@ -81,30 +91,33 @@ export function MessageBubble({
     </span>
   );
 
-  const body =
-    message.type === 'VIDEO_NOTE' ? (
-      <div className="bubble-video-note-wrap">
-        <Content message={message} />
-        <span className="bubble-video-note-wrap__meta">
-          {formatBubbleTime(message.createdAt)}
-          {showTicks && <MessageTicks status={message.status} pending={message.pending} />}
+  const body = isVideoNote ? (
+    <div className="bubble-video-note-wrap">
+      <Content message={message} />
+      <span className="bubble-video-note-wrap__meta">
+        {formatBubbleTime(message.createdAt)}
+        {showTicks && <MessageTicks status={message.status} pending={message.pending} />}
+      </span>
+    </div>
+  ) : (
+    <div
+      className={`bubble bubble--${message.type.toLowerCase()} ${isOwn ? 'bubble--own' : 'bubble--other'} ${
+        isMedia ? 'bubble--media' : ''
+      } bubble--group-${groupPosition} ${hasTail ? 'bubble--has-tail' : ''}`}
+    >
+      {message.forwardedFromName && (
+        <span className="bubble-forwarded">
+          <Forward size={12} strokeWidth={2} /> Uzatilgan: {message.forwardedFromName}
         </span>
-      </div>
-    ) : (
-      <div
-        className={`bubble bubble--${message.type.toLowerCase()} ${isOwn ? 'bubble--own' : 'bubble--other'}`}
-      >
-        {message.forwardedFromName && (
-          <span className="bubble-forwarded">
-            <Forward size={12} strokeWidth={2} /> Uzatilgan: {message.forwardedFromName}
-          </span>
-        )}
-        {showSenderName && <SenderLabel message={message} />}
-        <ReplyQuote replyTo={message.replyTo} />
+      )}
+      {showSenderName && <SenderLabel message={message} />}
+      <ReplyQuote replyTo={message.replyTo} />
+      <div className={`bubble-body ${isMedia ? 'bubble-body--media' : ''}`}>
         <Content message={message} />
         {meta}
       </div>
-    );
+    </div>
+  );
 
   return (
     <div

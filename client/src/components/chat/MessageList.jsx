@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { MessageBubble } from './MessageBubble.jsx';
 import { TypingIndicator } from './TypingIndicator.jsx';
+import { getMessageGroupPosition } from '../../utils/messageGrouping.js';
 
 export function MessageList({
   messages,
@@ -45,20 +46,29 @@ export function MessageList({
 
   return (
     <div className="message-list" ref={containerRef} onScroll={handleScroll}>
-      {messages.map((message) => (
-        <MessageBubble
-          key={message.id}
-          message={message}
-          isOwn={message.senderId === currentUserId}
-          isGroup={isGroup}
-          isSelectionMode={isSelectionMode}
-          isSelected={selectedIds?.has(message.id)}
-          onLongPress={onLongPress}
-          onToggleSelect={onToggleSelect}
-        />
-      ))}
-      {isSomeoneTyping && <TypingIndicator />}
-      <div ref={bottomRef} />
+      <div className="message-list__inner">
+        {messages.map((message, index) => {
+          const groupPosition = getMessageGroupPosition(messages, index);
+          const continued = groupPosition === 'middle' || groupPosition === 'last';
+
+          return (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              isOwn={message.senderId === currentUserId}
+              isGroup={isGroup}
+              groupPosition={groupPosition}
+              continued={continued}
+              isSelectionMode={isSelectionMode}
+              isSelected={selectedIds?.has(message.id)}
+              onLongPress={onLongPress}
+              onToggleSelect={onToggleSelect}
+            />
+          );
+        })}
+        {isSomeoneTyping && <TypingIndicator />}
+        <div ref={bottomRef} />
+      </div>
     </div>
   );
 }

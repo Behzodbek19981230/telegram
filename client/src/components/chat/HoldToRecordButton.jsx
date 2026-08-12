@@ -1,12 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Mic, Video } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useMediaRecorder } from '../../hooks/useMediaRecorder.js';
 import { formatDuration } from '../../utils/formatTime.js';
 
 const LONG_PRESS_MS = 220;
 
-export function HoldToRecordButton({ disabled, onRecordedVoice, onRecordedVideo }) {
-  const [mode, setMode] = useState('audio'); // audio | video
+export function HoldToRecordButton({
+  disabled,
+  mode,
+  onModeToggle,
+  onRecordingChange,
+  onRecordedVoice,
+  onRecordedVideo,
+}) {
   const longPressTimerRef = useRef(null);
   const suppressClickRef = useRef(false);
   const videoPreviewRef = useRef(null);
@@ -22,6 +29,10 @@ export function HoldToRecordButton({ disabled, onRecordedVoice, onRecordedVideo 
   const isRecording = isAudioRecording || isVideoRecording;
 
   useEffect(() => {
+    onRecordingChange?.(isRecording ? (isVideoRecording ? 'video' : 'audio') : null);
+  }, [isRecording, isVideoRecording, onRecordingChange]);
+
+  useEffect(() => {
     if (videoPreviewRef.current) {
       videoPreviewRef.current.srcObject = videoRecorder.previewStream;
     }
@@ -33,7 +44,6 @@ export function HoldToRecordButton({ disabled, onRecordedVoice, onRecordedVideo 
       audioRecorder.cancel();
       videoRecorder.cancel();
     };
-    // recorder objects are stable by hook usage; cleanup on unmount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -66,20 +76,23 @@ export function HoldToRecordButton({ disabled, onRecordedVoice, onRecordedVideo 
     }
   }
 
-  function handlePointerDown() {
+  function cancelRecording() {
+    clearTimeout(longPressTimerRef.current);
+    if (isAudioRecording) audioRecorder.cancel();
+    if (isVideoRecording) videoRecorder.cancel();
+  }
+
+  function handlePointerDown(e) {
     if (disabled || isRecording) return;
+    e.preventDefault();
     suppressClickRef.current = false;
     clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = setTimeout(() => {
-      startRecording();
-    }, LONG_PRESS_MS);
+    longPressTimerRef.current = setTimeout(startRecording, LONG_PRESS_MS);
   }
 
   function handlePointerUp() {
     clearTimeout(longPressTimerRef.current);
-    if (isRecording) {
-      stopAndSend();
-    }
+    if (isRecording) stopAndSend();
   }
 
   function handleClick() {
@@ -88,48 +101,69 @@ export function HoldToRecordButton({ disabled, onRecordedVoice, onRecordedVideo 
       suppressClickRef.current = false;
       return;
     }
-    setMode((prev) => (prev === 'audio' ? 'video' : 'audio'));
+    onModeToggle();
   }
 
   const Icon = mode === 'audio' ? Mic : Video;
-
-  if (isAudioRecording) {
-    return (
-      <div className="voice-recording">
-        <span className="voice-recording__dot" />
-        <span className="voice-recording__time">{formatDuration(audioRecorder.durationSec)}</span>
-        <button type="button" className="composer__mic composer__mic--active" aria-label="Yuborish">
-          <Mic size={20} strokeWidth={2} />
-        </button>
-      </div>
-    );
-  }
+  const frame = document.querySelector('.mobile-frame');
 
   return (
     <>
-      {isVideoRecording && (
-        <div className="video-note-overlay video-note-overlay--hold">
-          <div className="video-note-circle" style={{ width: 220, height: 220 }}>
-            <video ref={videoPreviewRef} autoPlay playsInline muted />
-          </div>
-          <div className="video-note-time">{formatDuration(videoRecorder.durationSec)}</div>
-          <p className="video-note-hint">Qo‘yib yuborsangiz yuboriladi</p>
-        </div>
-      )}
+      {isVideoRecording &&
+        frame &&
+        createPortal(
+          <div className="video-note-overlay video-note-overlay--hold">
+            <div className="video-note-circle" style={{ width: 220, height: 220 }}>
+              <video ref={videoPreviewRef} autoPlay playsInline muted />
+            </div>
+            <div className="video-note-time">{formatDuration(videoRecorder.durationSec)}</div>
+            <p className="video-note-hint">Qo‘yib yuborsangiz yuboriladi</p>
+            <button type="button" className="video-note-controls__cancel" onClick={cancelRecording}>
+              ✕
+            </button>
+          </div>,
+          frame
+        )}
 
-      <button
-        type="button"
-        className={`composer__mic composer__record-toggle ${mode === 'video' ? 'composer__record-toggle--video' : ''}`}
-        disabled={disabled}
-        aria-label={mode === 'video' ? 'Video rejim. Bosib turing' : 'Audio rejim. Bosib turing'}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onClick={handleClick}
-      >
-        <Icon size={21} strokeWidth={2} />
-      </button>
+      {!isVideoRecording && isAudioRecording ? (
+        <div className="voice-recording">
+          <button type="button" className="voice-recording__cancel" onClick={cancelRecording} aria-label="Bekor qilish">
+            ✕
+          </button>
+          <span className="voice-recording__dot" />
+          <span className="voice-recording__time">{formatDuration(audioRecorder.durationSec)}</span>
+          <button
+            type="button"
+            className="voice-recording__send"
+            onClick={stopAndSend}
+            aria-label="Yuborish"
+          >
+            <SendIcon />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={`composer__mic composer__record-toggle ${mode === 'video' ? 'composer__record-toggle--video' : ''}`}
+          disabled={disabled}
+          aria-label={mode === 'video' ? 'Video. Bosib turing' : 'Audio. Bosib turing'}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onPointerLeave={isRecording ? undefined : handlePointerUp}
+          onClick={handleClick}
+        >
+          <Icon size={21} strokeWidth={2} />
+        </button>
+      )}
     </>
   );
 }
 
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+      <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
+    </svg>
+  );
+}

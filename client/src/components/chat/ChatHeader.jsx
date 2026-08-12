@@ -12,17 +12,24 @@ export function ChatHeader({ chat, typingText, onClearHistory, onDeleteChat }) {
 
   const title = isGroup ? chat.name : chat.otherUser.displayName;
   const avatarSeed = isGroup ? chat.id : chat.otherUser.id;
-  const subtitle = typingText || (isGroup ? `${chat.memberCount} a'zo` : formatLastSeen(chat.otherUser.lastSeenAt, chat.otherUser.isOnline));
+  const avatarUrl = isGroup ? null : chat.otherUser.avatarUrl;
+  const subtitle =
+    typingText ||
+    (isGroup
+      ? `${chat.memberCount} a'zo`
+      : formatLastSeen(chat.otherUser.lastSeenAt, chat.otherUser.isOnline));
 
   return (
-    <header className="page-header chat-header">
+    <header className="chat-header">
       <BackButton to="/chats" />
-      <Avatar userId={avatarSeed} name={title} size={38} />
-      <div className="chat-header__info">
-        <span className="chat-header__name">{title}</span>
-        <span className={`chat-header__status ${typingText ? 'chat-header__status--typing' : ''}`}>
-          {subtitle}
-        </span>
+      <div className="chat-header__profile">
+        <Avatar userId={avatarSeed} name={title} avatarUrl={avatarUrl} size={42} />
+        <div className="chat-header__info">
+          <span className="chat-header__name">{title}</span>
+          <span className={`chat-header__status ${typingText ? 'chat-header__status--typing' : ''}`}>
+            {subtitle}
+          </span>
+        </div>
       </div>
       <div className="chat-header__actions">
         {!isGroup && (
