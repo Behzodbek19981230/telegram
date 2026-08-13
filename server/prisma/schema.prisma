@@ -15,6 +15,7 @@ enum MessageType {
   VOICE
   VIDEO_NOTE
   FILE
+  CALL
 }
 
 enum MessageStatus {

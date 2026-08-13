@@ -2,15 +2,25 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Send } from 'lucide-react';
 import { useMediaRecorder } from '../../hooks/useMediaRecorder.js';
 import { formatDuration } from '../../utils/formatTime.js';
+import { CameraFlipButton } from './CameraFlipButton.jsx';
 
 const NOTE_SIZE = 220;
 const MAX_DURATION = 60;
 
 export function VideoNoteRecorder({ onRecorded, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
-  const { isRecording, durationSec, previewStream, start, stop, cancel } = useMediaRecorder({
+  const {
+    isRecording,
+    durationSec,
+    previewStream,
+    facingMode,
+    start,
+    stop,
+    cancel,
+    flipCamera,
+  } = useMediaRecorder({
     audio: true,
-    video: { width: 480, height: 480, facingMode: 'user' },
+    video: { width: 480, height: 480 },
   });
   const videoRef = useRef(null);
 
@@ -47,6 +57,14 @@ export function VideoNoteRecorder({ onRecorded, disabled }) {
     setIsOpen(false);
   }
 
+  async function handleFlipCamera() {
+    try {
+      await flipCamera();
+    } catch {
+      alert('Kamerani almashtirib bo‘lmadi');
+    }
+  }
+
   return (
     <>
       <button type="button" className="composer__mic" onClick={handleOpen} disabled={disabled} aria-label="Dumaloq video xabar">
@@ -58,7 +76,11 @@ export function VideoNoteRecorder({ onRecorded, disabled }) {
 
       {isOpen && (
         <div className="video-note-overlay">
-          <div className="video-note-circle" style={{ width: NOTE_SIZE, height: NOTE_SIZE }}>
+          <CameraFlipButton onClick={handleFlipCamera} />
+          <div
+            className={`video-note-circle ${facingMode === 'user' ? 'video-note-circle--front' : 'video-note-circle--back'}`}
+            style={{ width: NOTE_SIZE, height: NOTE_SIZE }}
+          >
             <video ref={videoRef} autoPlay playsInline muted />
           </div>
           <div className="video-note-time">{formatDuration(durationSec)}</div>

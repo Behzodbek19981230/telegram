@@ -17,8 +17,12 @@ export function ChatListItem({ chat }) {
   const avatarUrl = isGroup ? null : chat.otherUser.avatarUrl;
 
   let senderName;
-  if (isGroup && lastMessage) {
-    senderName = lastMessage.senderId === user.id ? 'Siz' : lastMessage.sender?.displayName;
+  let isOwnLastMessage = false;
+  if (lastMessage) {
+    isOwnLastMessage = lastMessage.senderId === user.id;
+    if (isGroup) {
+      senderName = isOwnLastMessage ? 'Siz' : lastMessage.sender?.displayName;
+    }
   }
 
   return (
@@ -33,7 +37,9 @@ export function ChatListItem({ chat }) {
           <span className="chat-list-item__time">{formatListTime(updatedAt)}</span>
         </div>
         <div className="chat-list-item__row">
-          <span className="chat-list-item__preview">{formatLastMessage(lastMessage, { senderName })}</span>
+          <span className="chat-list-item__preview">
+            {formatLastMessage(lastMessage, { senderName, isOwn: isOwnLastMessage })}
+          </span>
           <UnreadBadge count={unreadCount} />
         </div>
       </div>

@@ -1,5 +1,6 @@
 function breaksGroup(message) {
   if (!message) return true;
+  if (message.type === 'CALL') return true;
   return Boolean(message.replyToId || message.replyTo || message.forwardedFromName);
 }
 

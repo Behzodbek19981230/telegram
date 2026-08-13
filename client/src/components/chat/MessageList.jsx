@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef } from 'react';
 import { MessageBubble } from './MessageBubble.jsx';
+import { MessageBubbleCall } from './MessageBubbleCall.jsx';
 import { TypingIndicator } from './TypingIndicator.jsx';
 import { getMessageGroupPosition } from '../../utils/messageGrouping.js';
 import { formatChatDateDivider, isSameDay } from '../../utils/formatTime.js';
@@ -61,17 +62,21 @@ export function MessageList({
                   <span>{formatChatDateDivider(message.createdAt)}</span>
                 </div>
               )}
-              <MessageBubble
-                message={message}
-                isOwn={message.senderId === currentUserId}
-                isGroup={isGroup}
-                groupPosition={groupPosition}
-                continued={continued}
-                isSelectionMode={isSelectionMode}
-                isSelected={selectedIds?.has(message.id)}
-                onLongPress={onLongPress}
-                onToggleSelect={onToggleSelect}
-              />
+              {message.type === 'CALL' ? (
+                <MessageBubbleCall message={message} isOwn={message.senderId === currentUserId} />
+              ) : (
+                <MessageBubble
+                  message={message}
+                  isOwn={message.senderId === currentUserId}
+                  isGroup={isGroup}
+                  groupPosition={groupPosition}
+                  continued={continued}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={selectedIds?.has(message.id)}
+                  onLongPress={onLongPress}
+                  onToggleSelect={onToggleSelect}
+                />
+              )}
             </Fragment>
           );
         })}

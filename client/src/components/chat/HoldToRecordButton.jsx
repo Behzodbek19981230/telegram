@@ -3,6 +3,7 @@ import { Mic, Camera } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useMediaRecorder } from '../../hooks/useMediaRecorder.js';
 import { formatDuration } from '../../utils/formatTime.js';
+import { CameraFlipButton } from './CameraFlipButton.jsx';
 
 const LONG_PRESS_MS = 220;
 
@@ -44,7 +45,7 @@ export function HoldToRecordButton({
 	const audioRecorder = useMediaRecorder({ audio: true });
 	const videoRecorder = useMediaRecorder({
 		audio: true,
-		video: { width: 480, height: 480, facingMode: 'user' },
+		video: { width: 480, height: 480 },
 	});
 
 	const isAudioRecording = audioRecorder.isRecording;
@@ -105,6 +106,14 @@ export function HoldToRecordButton({
 		if (isVideoRecording) videoRecorder.cancel();
 	}
 
+	async function handleFlipCamera() {
+		try {
+			await videoRecorder.flipCamera();
+		} catch {
+			alert('Kamerani almashtirib bo‘lmadi');
+		}
+	}
+
 	function handlePointerDown(e) {
 		if (disabled || isRecording) return;
 		e.preventDefault();
@@ -138,7 +147,11 @@ export function HoldToRecordButton({
 				{frame &&
 					createPortal(
 						<div className='video-note-overlay video-note-overlay--hold'>
-							<div className='video-note-circle' style={{ width: 220, height: 220 }}>
+							<CameraFlipButton onClick={handleFlipCamera} />
+							<div
+								className={`video-note-circle ${videoRecorder.facingMode === 'user' ? 'video-note-circle--front' : 'video-note-circle--back'}`}
+								style={{ width: 220, height: 220 }}
+							>
 								<video ref={videoPreviewRef} autoPlay playsInline muted />
 							</div>
 							<div className='video-note-time'>{formatDuration(videoRecorder.durationSec)}</div>
