@@ -49,11 +49,24 @@ export function useChats() {
       });
     }
 
+    function handleCallMessage({ chatId, message }) {
+      if (!message) return;
+      handleNewMessage({ message });
+    }
+
     socket.on('message:new', handleNewMessage);
     socket.on('chat:cleared', handleCleared);
+    socket.on('call:finished', handleCallMessage);
+    socket.on('call:ended', handleCallMessage);
+    socket.on('call:rejected', handleCallMessage);
+    socket.on('call:cancelled', handleCallMessage);
     return () => {
       socket.off('message:new', handleNewMessage);
       socket.off('chat:cleared', handleCleared);
+      socket.off('call:finished', handleCallMessage);
+      socket.off('call:ended', handleCallMessage);
+      socket.off('call:rejected', handleCallMessage);
+      socket.off('call:cancelled', handleCallMessage);
     };
   }, [socket, user, reload]);
 

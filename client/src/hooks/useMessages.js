@@ -68,15 +68,35 @@ export function useMessages(chatId) {
       setMessages([]);
     }
 
+    function appendCallMessage(message) {
+      if (!message || message.chatId !== chatId) return;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === message.id)) return prev;
+        return [...prev, message];
+      });
+    }
+
+    function handleCallFinished({ chatId: cId, message }) {
+      if (cId === chatId) appendCallMessage(message);
+    }
+
+    function handleCallEnded({ chatId: cId, message }) {
+      if (cId === chatId) appendCallMessage(message);
+    }
+
     socket.on('message:new', handleNewMessage);
     socket.on('message:status', handleStatus);
     socket.on('message:deleted', handleDeleted);
     socket.on('chat:cleared', handleCleared);
+    socket.on('call:finished', handleCallFinished);
+    socket.on('call:ended', handleCallEnded);
     return () => {
       socket.off('message:new', handleNewMessage);
       socket.off('message:status', handleStatus);
       socket.off('message:deleted', handleDeleted);
       socket.off('chat:cleared', handleCleared);
+      socket.off('call:finished', handleCallFinished);
+      socket.off('call:ended', handleCallEnded);
     };
   }, [socket, chatId]);
 

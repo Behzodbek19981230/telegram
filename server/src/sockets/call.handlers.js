@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 import { getUserById } from '../services/user.service.js';
+import { assertChatAccess, otherMemberIdOf } from '../services/chat.service.js';
 import { createCallLogMessage } from '../services/callLog.service.js';
 
-// callId -> { callerId, calleeId, chatId, callType, status, startedAt, answeredAt? }
 const activeCalls = new Map();
+const finalizedCallIds = new Set();
 
 function findCallByParticipant(userId) {
   for (const [callId, call] of activeCalls) {
@@ -18,25 +19,39 @@ function otherParty(call, userId) {
   return call.callerId === userId ? call.calleeId : call.callerId;
 }
 
-async function finishCall(io, callId, outcome) {
-  const call = activeCalls.get(callId);
-  if (!call) return;
+async function finalizeCall(io, callId, call, status, durationSec = 0) {
+  if (finalizedCallIds.has(callId)) return null;
 
+  finalizedCallIds.add(callId);
   activeCalls.delete(callId);
 
-  let status = outcome;
-  let durationSec = 0;
+  let finalStatus = status;
+  let finalDuration = durationSec;
 
-  if (call.answeredAt) {
-    durationSec = Math.max(0, Math.round((Date.now() - call.answeredAt) / 1000));
-    status = 'completed';
+  if (call.answeredAt && status !== 'rejected' && status !== 'busy') {
+    finalStatus = 'completed';
+    if (!finalDuration) {
+      finalDuration = Math.max(0, Math.round((Date.now() - call.answeredAt) / 1000));
+    }
   }
 
   try {
-    await createCallLogMessage(io, call, status, durationSec);
+    const message = await createCallLogMessage(io, call, finalStatus, finalDuration);
+    setTimeout(() => finalizedCallIds.delete(callId), 60_000);
+    return message;
   } catch (err) {
+    finalizedCallIds.delete(callId);
     console.error('Failed to create call log:', err);
+    throw err;
   }
+}
+
+function notifyCallEnded(io, call, callId, message) {
+  io.to([call.callerId, call.calleeId]).emit('call:ended', {
+    callId,
+    chatId: call.chatId,
+    message,
+  });
 }
 
 export function registerCallHandlers(io, socket) {
@@ -45,6 +60,12 @@ export function registerCallHandlers(io, socket) {
       const { chatId, toUserId, callType } = payload || {};
       if (!chatId || !toUserId || !['audio', 'video'].includes(callType)) {
         return ack?.({ ok: false, error: 'Invalid call invite' });
+      }
+
+      const chat = await assertChatAccess(chatId, socket.userId);
+      const expectedCallee = otherMemberIdOf(chat, socket.userId);
+      if (chat.type !== 'DIRECT' || expectedCallee !== toUserId) {
+        return ack?.({ ok: false, error: 'Invalid call target' });
       }
 
       const callId = crypto.randomUUID();
@@ -80,52 +101,66 @@ export function registerCallHandlers(io, socket) {
     io.to(call.callerId).emit('call:accepted', { callId });
   });
 
-  socket.on('call:reject', async ({ callId, reason } = {}) => {
+  socket.on('call:reject', async ({ callId, reason } = {}, ack) => {
     const call = activeCalls.get(callId);
-    if (!call || call.calleeId !== socket.userId) return;
+    if (!call || call.calleeId !== socket.userId) {
+      return ack?.({ ok: false, error: 'Call not found' });
+    }
 
     const status = reason === 'busy' ? 'busy' : 'rejected';
-    activeCalls.delete(callId);
-    io.to(call.callerId).emit('call:rejected', { callId, reason });
 
     try {
-      await createCallLogMessage(io, call, status, 0);
+      const message = await finalizeCall(io, callId, call, status, 0);
+      io.to(call.callerId).emit('call:rejected', {
+        callId,
+        reason,
+        chatId: call.chatId,
+        message,
+      });
+      ack?.({ ok: true, message });
     } catch (err) {
-      console.error('Failed to create call log:', err);
+      ack?.({ ok: false, error: err.message });
     }
   });
 
-  socket.on('call:cancel', async ({ callId } = {}) => {
+  socket.on('call:cancel', async ({ callId } = {}, ack) => {
     const call = activeCalls.get(callId);
-    if (!call || call.callerId !== socket.userId) return;
-
-    activeCalls.delete(callId);
-    io.to(call.calleeId).emit('call:cancelled', { callId });
+    if (!call || call.callerId !== socket.userId) {
+      return ack?.({ ok: false, error: 'Call not found' });
+    }
 
     try {
-      await createCallLogMessage(io, call, 'missed', 0);
+      const message = await finalizeCall(io, callId, call, 'missed', 0);
+      io.to(call.calleeId).emit('call:cancelled', {
+        callId,
+        chatId: call.chatId,
+        message,
+      });
+      ack?.({ ok: true, message });
     } catch (err) {
-      console.error('Failed to create call log:', err);
+      ack?.({ ok: false, error: err.message });
     }
   });
 
-  socket.on('call:end', async ({ callId } = {}) => {
+  socket.on('call:end', async ({ callId } = {}, ack) => {
     const call = activeCalls.get(callId);
-    if (!call) return;
-    if (call.callerId !== socket.userId && call.calleeId !== socket.userId) return;
-
-    activeCalls.delete(callId);
-    io.to(call.callerId).to(call.calleeId).emit('call:ended', { callId });
-
-    let durationSec = 0;
-    if (call.answeredAt) {
-      durationSec = Math.max(0, Math.round((Date.now() - call.answeredAt) / 1000));
+    if (!call) {
+      return ack?.({ ok: false, error: 'Call not found' });
+    }
+    if (call.callerId !== socket.userId && call.calleeId !== socket.userId) {
+      return ack?.({ ok: false, error: 'Forbidden' });
     }
 
     try {
-      await createCallLogMessage(io, call, call.answeredAt ? 'completed' : 'missed', durationSec);
+      const status = call.answeredAt ? 'completed' : 'missed';
+      const durationSec = call.answeredAt
+        ? Math.max(0, Math.round((Date.now() - call.answeredAt) / 1000))
+        : 0;
+      const message = await finalizeCall(io, callId, call, status, durationSec);
+      notifyCallEnded(io, call, callId, message);
+      ack?.({ ok: true, message });
     } catch (err) {
-      console.error('Failed to create call log:', err);
+      ack?.({ ok: false, error: err.message });
     }
   });
 
@@ -143,20 +178,18 @@ export function registerCallHandlers(io, socket) {
     if (!found) return;
 
     const { callId, call } = found;
-    activeCalls.delete(callId);
-    io.to(otherParty(call, socket.userId)).emit('call:ended', { callId });
-
-    let durationSec = 0;
-    let status = 'missed';
-    if (call.answeredAt) {
-      durationSec = Math.max(0, Math.round((Date.now() - call.answeredAt) / 1000));
-      status = 'completed';
-    }
 
     try {
-      await createCallLogMessage(io, call, status, durationSec);
+      const status = call.answeredAt ? 'completed' : 'missed';
+      const durationSec = call.answeredAt
+        ? Math.max(0, Math.round((Date.now() - call.answeredAt) / 1000))
+        : 0;
+      const message = await finalizeCall(io, callId, call, status, durationSec);
+      if (message) {
+        notifyCallEnded(io, call, callId, message);
+      }
     } catch (err) {
-      console.error('Failed to create call log:', err);
+      console.error('Failed to log call on disconnect:', err);
     }
   });
 }

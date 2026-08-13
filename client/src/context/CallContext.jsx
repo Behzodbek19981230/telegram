@@ -231,11 +231,13 @@ export function CallProvider({ children }) {
   const endCall = useCallback(() => {
     const current = stateRef.current;
     if (!socket || current.status === 'idle') return;
+
     if (current.status === 'outgoing') {
       socket.emit('call:cancel', { callId: current.callId });
-    } else {
+    } else if (current.status === 'active') {
       socket.emit('call:end', { callId: current.callId });
     }
+
     cleanup();
   }, [socket, cleanup]);
 
