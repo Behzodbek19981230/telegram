@@ -1,15 +1,18 @@
 import { prisma } from '../lib/prisma.js';
 import { deleteUploadedFileByUrl } from '../utils/deleteUploadedFile.js';
+import { ApiError } from '../utils/ApiError.js';
 
 export async function getStats() {
-  const [userCount, chatCount, messageCount, deletedChatCount, deletedMessageCount] = await Promise.all([
-    prisma.user.count(),
-    prisma.chat.count({ where: { deletedAt: null } }),
-    prisma.message.count({ where: { deletedAt: null } }),
-    prisma.chat.count({ where: { deletedAt: { not: null } } }),
-    prisma.message.count({ where: { deletedAt: { not: null } } }),
-  ]);
-  return { userCount, chatCount, messageCount, deletedChatCount, deletedMessageCount };
+  const [userCount, chatCount, groupCount, messageCount, deletedChatCount, deletedMessageCount] =
+    await Promise.all([
+      prisma.user.count(),
+      prisma.chat.count({ where: { deletedAt: null, type: 'DIRECT' } }),
+      prisma.chat.count({ where: { deletedAt: null, type: 'GROUP' } }),
+      prisma.message.count({ where: { deletedAt: null } }),
+      prisma.chat.count({ where: { deletedAt: { not: null } } }),
+      prisma.message.count({ where: { deletedAt: { not: null } } }),
+    ]);
+  return { userCount, chatCount, groupCount, messageCount, deletedChatCount, deletedMessageCount };
 }
 
 export async function listAllUsers() {
@@ -18,6 +21,7 @@ export async function listAllUsers() {
       id: true,
       username: true,
       displayName: true,
+      phone: true,
       isOnline: true,
       isAdmin: true,
       createdAt: true,
@@ -28,47 +32,120 @@ export async function listAllUsers() {
 }
 
 function chatDisplayName(chat) {
-  if (chat.type === 'GROUP') return chat.name;
-  return chat.members.map((m) => m.user.displayName).join(' & ');
+  if (chat.type === 'GROUP') return chat.name || 'Guruh';
+  return chat.members.map((m) => m.user.displayName).join(' & ') || 'Shaxsiy chat';
 }
 
-export async function listAllChats() {
+function mapChatSummary(chat) {
+  const deletedMessageCount = chat.messages
+    ? chat.messages.filter((m) => m.deletedAt).length
+    : 0;
+
+  return {
+    id: chat.id,
+    type: chat.type,
+    name: chatDisplayName(chat),
+    members: chat.members.map((m) => ({
+      id: m.user.id,
+      displayName: m.user.displayName,
+      username: m.user.username,
+    })),
+    messageCount: chat._count.messages,
+    deletedMessageCount,
+    deletedAt: chat.deletedAt,
+    createdAt: chat.createdAt,
+    updatedAt: chat.updatedAt,
+  };
+}
+
+export async function listAllChats({ type } = {}) {
   const chats = await prisma.chat.findMany({
+    where: type ? { type } : undefined,
     include: {
-      members: { include: { user: { select: { id: true, displayName: true } } } },
+      members: {
+        include: {
+          user: { select: { id: true, displayName: true, username: true } },
+        },
+      },
+      messages: { select: { deletedAt: true } },
       _count: { select: { messages: true } },
     },
     orderBy: { updatedAt: 'desc' },
   });
 
-  return chats.map((chat) => ({
+  return chats.map(mapChatSummary);
+}
+
+export async function getChatDetail(id) {
+  const chat = await prisma.chat.findUnique({
+    where: { id },
+    include: {
+      members: {
+        include: {
+          user: { select: { id: true, displayName: true, username: true, isAdmin: true } },
+        },
+      },
+      messages: {
+        orderBy: { createdAt: 'asc' },
+        include: {
+          sender: { select: { id: true, displayName: true, username: true } },
+        },
+      },
+    },
+  });
+
+  if (!chat) throw new ApiError(404, 'Chat topilmadi');
+
+  return {
     id: chat.id,
     type: chat.type,
     name: chatDisplayName(chat),
-    messageCount: chat._count.messages,
     deletedAt: chat.deletedAt,
     createdAt: chat.createdAt,
     updatedAt: chat.updatedAt,
-  }));
+    members: chat.members.map((m) => ({
+      id: m.user.id,
+      displayName: m.user.displayName,
+      username: m.user.username,
+      isAdmin: m.user.isAdmin,
+    })),
+    messages: chat.messages.map((m) => ({
+      id: m.id,
+      type: m.type,
+      content: m.content,
+      mediaUrl: m.mediaUrl,
+      status: m.status,
+      deletedAt: m.deletedAt,
+      createdAt: m.createdAt,
+      sender: m.sender,
+    })),
+  };
 }
 
 export async function listDeletedMessages() {
-  return prisma.message.findMany({
+  const messages = await prisma.message.findMany({
     where: { deletedAt: { not: null } },
     orderBy: { deletedAt: 'desc' },
-    take: 200,
+    take: 500,
     include: {
-      sender: { select: { id: true, displayName: true } },
+      sender: { select: { id: true, displayName: true, username: true } },
       chat: {
         select: {
           id: true,
           type: true,
           name: true,
-          members: { include: { user: { select: { id: true, displayName: true } } } },
+          members: {
+            include: { user: { select: { id: true, displayName: true, username: true } } },
+          },
         },
       },
     },
   });
+
+  return messages.map((m) => ({
+    ...m,
+    chat: m.chat ? { ...m.chat, name: chatDisplayName(m.chat) } : null,
+  }));
 }
 
 export async function listDeletedChats() {
@@ -76,28 +153,28 @@ export async function listDeletedChats() {
     where: { deletedAt: { not: null } },
     orderBy: { deletedAt: 'desc' },
     include: {
-      members: { include: { user: { select: { id: true, displayName: true } } } },
+      members: {
+        include: { user: { select: { id: true, displayName: true, username: true } } },
+      },
+      messages: { select: { deletedAt: true } },
       _count: { select: { messages: true } },
     },
   });
 
-  return chats.map((chat) => ({
-    id: chat.id,
-    type: chat.type,
-    name: chatDisplayName(chat),
-    messageCount: chat._count.messages,
-    deletedAt: chat.deletedAt,
-  }));
+  return chats.map(mapChatSummary);
 }
 
 export async function hardDeleteMessage(id) {
   const message = await prisma.message.findUnique({ where: { id } });
-  if (!message) return;
+  if (!message) throw new ApiError(404, 'Xabar topilmadi');
   if (message.mediaUrl) await deleteUploadedFileByUrl(message.mediaUrl);
   await prisma.message.delete({ where: { id } });
 }
 
 export async function hardDeleteChat(id) {
+  const chat = await prisma.chat.findUnique({ where: { id }, select: { id: true } });
+  if (!chat) throw new ApiError(404, 'Chat topilmadi');
+
   const messages = await prisma.message.findMany({
     where: { chatId: id },
     select: { id: true, mediaUrl: true },

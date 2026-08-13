@@ -19,6 +19,7 @@ export const env = {
   jwtSecret: required('JWT_SECRET'),
   clientOrigins: parseOrigins(process.env.CLIENT_ORIGIN),
   clientOrigin: parseOrigins(process.env.CLIENT_ORIGIN)[0],
-  adminUsername: process.env.ADMIN_USERNAME || null,
+  adminUsername: (process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase(),
+  adminPassword: process.env.ADMIN_PASSWORD || '123456',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || null,
 };

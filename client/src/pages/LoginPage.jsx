@@ -20,8 +20,8 @@ export function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      await login({ username: username.trim(), password });
-      navigate('/chats', { replace: true });
+      const user = await login({ username: username.trim(), password });
+      navigate(user?.isAdmin ? '/admin' : '/chats', { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || 'Kirishda xatolik yuz berdi');
     } finally {

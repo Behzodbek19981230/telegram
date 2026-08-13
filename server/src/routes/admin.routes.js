@@ -5,6 +5,7 @@ import {
   getStats,
   getUsers,
   getChats,
+  getChatDetail,
   getDeletedMessages,
   getDeletedChats,
   deleteMessage,
@@ -18,8 +19,9 @@ router.use(requireAuth, requireAdmin);
 router.get('/stats', getStats);
 router.get('/users', getUsers);
 router.get('/chats', getChats);
-router.get('/messages/deleted', getDeletedMessages);
 router.get('/chats/deleted', getDeletedChats);
+router.get('/chats/:id', getChatDetail);
+router.get('/messages/deleted', getDeletedMessages);
 router.delete('/messages/:id', deleteMessage);
 router.delete('/chats/:id', deleteChat);
 router.post('/purge-all', purgeAll);

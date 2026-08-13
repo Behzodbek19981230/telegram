@@ -32,11 +32,45 @@ function displayNameFromNames(firstName, lastName, fallback) {
 }
 
 function maybeMarkAdmin(user, username) {
-  const shouldBeAdmin = env.adminUsername && username === env.adminUsername.trim().toLowerCase();
+  const shouldBeAdmin = env.adminUsername && username === env.adminUsername;
   if (shouldBeAdmin && !user.isAdmin) {
-    return prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
+    return prisma.user.update({
+      where: { id: user.id },
+      data: { isAdmin: true },
+      select: { ...PUBLIC_USER_FIELDS, password: true },
+    });
   }
   return user;
+}
+
+/** Ensure fixed admin login (default: admin / 123456) exists on boot. */
+export async function ensureAdminAccount() {
+  const username = env.adminUsername;
+  const password = env.adminPassword;
+  if (!username || !password) return null;
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const existing = await prisma.user.findUnique({ where: { username } });
+
+  if (!existing) {
+    return prisma.user.create({
+      data: {
+        username,
+        displayName: 'Admin',
+        firstName: 'Admin',
+        lastName: '',
+        password: hashedPassword,
+        isAdmin: true,
+      },
+      select: PUBLIC_USER_FIELDS,
+    });
+  }
+
+  return prisma.user.update({
+    where: { id: existing.id },
+    data: { password: hashedPassword, isAdmin: true },
+    select: PUBLIC_USER_FIELDS,
+  });
 }
 
 export async function getUserById(id) {
@@ -98,8 +132,7 @@ export async function verifyCredentialsLogin({ username, password }) {
   if (!user.password) return null;
   const ok = await bcrypt.compare(password || '', user.password);
   if (!ok) return null;
-  // return minimal fields for client:
-  return user;
+  return maybeMarkAdmin(user, normalizeUsername(username));
 }
 
 export async function telegramUpsert({ telegramId, username, firstName, lastName, phone }) {

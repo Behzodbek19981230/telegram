@@ -10,7 +10,12 @@ export const getUsers = asyncHandler(async (req, res) => {
 });
 
 export const getChats = asyncHandler(async (req, res) => {
-  res.json({ chats: await adminService.listAllChats() });
+  const type = req.query.type === 'GROUP' || req.query.type === 'DIRECT' ? req.query.type : undefined;
+  res.json({ chats: await adminService.listAllChats({ type }) });
+});
+
+export const getChatDetail = asyncHandler(async (req, res) => {
+  res.json({ chat: await adminService.getChatDetail(req.params.id) });
 });
 
 export const getDeletedMessages = asyncHandler(async (req, res) => {

@@ -8,8 +8,14 @@ export function fetchAllUsers() {
   return http.get('/admin/users').then((res) => res.data.users);
 }
 
-export function fetchAllChats() {
-  return http.get('/admin/chats').then((res) => res.data.chats);
+export function fetchAllChats(type) {
+  return http
+    .get('/admin/chats', { params: type ? { type } : undefined })
+    .then((res) => res.data.chats);
+}
+
+export function fetchChatDetail(id) {
+  return http.get(`/admin/chats/${id}`).then((res) => res.data.chat);
 }
 
 export function fetchDeletedMessages() {
